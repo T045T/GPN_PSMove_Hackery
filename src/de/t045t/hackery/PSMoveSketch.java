@@ -87,7 +87,7 @@ public class PSMoveSketch extends PApplet{
 		} else {
 			currentAngle = (float) (mouseX / 800.0) * TWO_PI;
 		}
-		drawSegment(400, 300, 200, (int) (currentAngle / (PI / 36)), 150, 0.5f, 0.5f+currentAngle);
+		drawSegment(400, 300, 200, 5/*(int) (currentAngle / (PI / 36))*/, 150, currentAngle, currentAngle+0.5f);
 	}
 
 	void updateRadialDial(int x, int y) {
@@ -102,8 +102,8 @@ public class PSMoveSketch extends PApplet{
 		beginShape(QUAD_STRIP);
 		float tmp = (endAngle-startAngle) / segments;
 		for(int i = 0; i < segments+1; i++) {
-			vertex(x+segHeight*cos((startAngle+tmp)*i), y+segHeight*sin((startAngle+tmp)*i));
-			vertex(x+innerRadius*cos((startAngle+tmp)*i), y+innerRadius*sin((startAngle+tmp)*i));
+			vertex(x+segHeight*cos(startAngle+(tmp*i)), y+segHeight*sin(startAngle+(tmp*i)));
+			vertex(x+innerRadius*cos(startAngle+(tmp*i)), y+innerRadius*sin(startAngle+(tmp*i)));
 		}
 		endShape(CLOSE);
 	}
