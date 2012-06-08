@@ -3,6 +3,7 @@ package de.t045t.hackery;
 import processing.core.*;
 import io.thp.psmove.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class PSMoveSketch extends PApplet{
 
@@ -20,19 +21,21 @@ public class PSMoveSketch extends PApplet{
 		}
 
 		// Set up Processing canvas
+		frameRate(60);
 		size(800, 600, P3D);
 		noStroke();
 		colorMode(RGB, 1);
 		fill(0.4f);
-		angles = {0,0,0};
+		angles = new float[3];
+		Arrays.fill(angles, 0);
 	}
 
 	private float currentAngle;
 
 	public void integrate_angles(float roll, float nick, float gear) {
-		angles[0] += (roll/9)*(1/60);
-		angles[1] += (nick/9)*(1/60);
-		angles[2] += (gear/9)*(1/60);
+		angles[0] += (roll/9f)*(1/60f);
+		angles[1] += (nick/9f)*(1/60f);
+		angles[2] += (gear/9f)*(1/60f);
 		
 		//if(abs(roll) < 10 && abs(nick) < 10 && abs(gear) < 10) { // keine Bewegung
 			
@@ -51,10 +54,14 @@ public class PSMoveSketch extends PApplet{
 			if (move.poll() > 0) {
 				//integrate_angles(move.getGx(), move.getGy(), move.getGz());
 				integrate_angles(move.getAx(), move.getAy(), move.getAz());
+
+				drawSegment(400, 300, 50, 5, 30, (int) angles[0] % 360, (int) (angles[0] % 360) + 40);
+				drawSegment(400, 300, 75, 5, 55, (int) angles[1] % 360, (int) (angles[1] % 360) + 40);
+				drawSegment(400, 300, 100, 5, 80, (int) angles[2] % 360, (int) (angles[2] % 360) + 40);
 				// getAccelAngles(move.getAx(), move.getAy(), move.getAz());
-				// MahonyAHRSupdateIMU(paramList.get(i), 
-						// move.getGx(), move.getGy(), move.getGz(), 
-						// move.getAx(), move.getAy(), move.getAz());//,
+//				MahonyAHRSupdateIMU(paramList.get(i), 
+//						move.getGx(), move.getGy(), move.getGz(), 
+//						move.getAx(), move.getAy(), move.getAz());//,
 					//	move.getMx(), move.getMy(), move.getMz());
 			}
 
