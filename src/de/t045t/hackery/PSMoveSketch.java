@@ -8,6 +8,7 @@ public class PSMoveSketch extends PApplet{
 
 	private ArrayList<PSMove> moves;
 	private ArrayList<MahoneyParameters> paramList;
+	private float [] angles;
 
 	public void setup() {
 		// Initialize MAGIC WANDS
@@ -23,20 +24,29 @@ public class PSMoveSketch extends PApplet{
 		noStroke();
 		colorMode(RGB, 1);
 		fill(0.4f);
+		angles = {0,0,0};
 	}
 
 	private float currentAngle;
 
+	public void integrate_angles(float roll, float nick, float gear)
+	{
+		angles[0] += (roll/10)*(1/60);
+		angles[1] += (nick/10)*(1/60);
+		angles[2] += (gear/10)*(1/60);
+	}
+	
 	public void draw() {
 		background(125,125,125);
 		stroke(255,0,0);
 		for (int i = 0; i < moves.size(); i++) {
 			PSMove move = moves.get(i);
 			if (move.poll() > 0) {
-				getAccelAngles(move.getAx(), move.getAy(), move.getAz());
-				MahonyAHRSupdateIMU(paramList.get(i), 
-						move.getGx(), move.getGy(), move.getGz(), 
-						move.getAx(), move.getAy(), move.getAz());//,
+				integrate_angles(angles, move.getGx(), move.getGy(), move.getGz());
+				// getAccelAngles(move.getAx(), move.getAy(), move.getAz());
+				// MahonyAHRSupdateIMU(paramList.get(i), 
+						// move.getGx(), move.getGy(), move.getGz(), 
+						// move.getAx(), move.getAy(), move.getAz());//,
 					//	move.getMx(), move.getMy(), move.getMz());
 			}
 
