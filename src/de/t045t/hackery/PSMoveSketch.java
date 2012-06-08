@@ -29,11 +29,18 @@ public class PSMoveSketch extends PApplet{
 
 	private float currentAngle;
 
-	public void integrate_angles(float roll, float nick, float gear)
-	{
-		angles[0] += (roll/10)*(1/60);
-		angles[1] += (nick/10)*(1/60);
-		angles[2] += (gear/10)*(1/60);
+	public void integrate_angles(float roll, float nick, float gear) {
+		angles[0] += (roll/9)*(1/60);
+		angles[1] += (nick/9)*(1/60);
+		angles[2] += (gear/9)*(1/60);
+		
+		//if(abs(roll) < 10 && abs(nick) < 10 && abs(gear) < 10) { // keine Bewegung
+			
+	}
+	public void absolute_angles(float ax, float ay, float az) {
+		angles[0] = atan2(ay,az);
+		angles[1] = atan2(ax,az);
+		angles[2] = atan2(ax,ay);
 	}
 	
 	public void draw() {
@@ -42,7 +49,8 @@ public class PSMoveSketch extends PApplet{
 		for (int i = 0; i < moves.size(); i++) {
 			PSMove move = moves.get(i);
 			if (move.poll() > 0) {
-				integrate_angles(angles, move.getGx(), move.getGy(), move.getGz());
+				//integrate_angles(move.getGx(), move.getGy(), move.getGz());
+				integrate_angles(move.getAx(), move.getAy(), move.getAz());
 				// getAccelAngles(move.getAx(), move.getAy(), move.getAz());
 				// MahonyAHRSupdateIMU(paramList.get(i), 
 						// move.getGx(), move.getGy(), move.getGz(), 
