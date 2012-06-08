@@ -19,6 +19,7 @@ public class PSMoveSketch extends PApplet{
 		}
 
 		// Set up Processing canvas
+		frameRate(60);
 		size(800, 600, P3D);
 		noStroke();
 		colorMode(RGB, 1);
