@@ -101,7 +101,7 @@ public class PSMoveSketch extends PApplet{
 	
 	private void drawGame() {
 		DumbFusionParameters tmpPar = null;
-		background(125,125,125);
+		background(20,20,20);
 		stroke(255,0,0);
 		for (int i = 0; i < moves.size(); i++) {
 			PSMove move = moves.get(i);
@@ -200,7 +200,6 @@ public class PSMoveSketch extends PApplet{
 										}
 										break;
 									case 3: //TRIANGLE
-										System.out.println(button);
 										if ((button & Button.Btn_TRIANGLE.swigValue()) > 0) {
 											l.hit();
 										}
