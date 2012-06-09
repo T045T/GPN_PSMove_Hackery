@@ -17,9 +17,13 @@ public class PSMoveSketch extends PApplet{
 	private int segments = 30;
 	private int numberOfRings;
 	private boolean endScreen;
-	
+	private boolean gameOver;
+	private PFont helv;
+
 	private int score;
 
+	private int gameTimeSec = 90;
+	private long startTime;
 
 	int lastSeenButton;
 
@@ -27,6 +31,8 @@ public class PSMoveSketch extends PApplet{
 	public void setup() {
 		// Initialize MAGIC WANDS
 
+		startTime = System.currentTimeMillis();
+		helv = createFont("Helvetica", 16);
 		endScreen = false;
 		numberOfRings = 3;
 		lastSeenButton = -1;
@@ -79,26 +85,44 @@ public class PSMoveSketch extends PApplet{
 	float startAngle;
 
 	public void draw() {
-		if (!endScreen) {
-			drawGame();
+		if (gameOver) {
+			drawGameOver();
 		} else {
-			drawEndScreen();
+			if (!endScreen) {
+				drawGame();
+			} else {
+				drawEndScreen();
+			}
 		}
 	}
-	
+
+	private void drawGameOver() {
+		background(125,125,125);
+		PFont font = createFont("Helvetica", 50);
+		textFont(font);
+		text("Game Over!\nPress X Button to restart game!", 20, 50);
+		text("Final Score: " + score, 20, this.height/2);
+
+		if (moves.size() > 0 && moves.get(0).poll() > 0) {
+			if ((moves.get(0).get_buttons() & Button.Btn_CROSS.swigValue() )> 0) {
+				endScreen = false;
+				restartNew();
+			}
+		}
+	}
 	private void drawEndScreen() {
 		background(125,125,125);
 		PFont font = createFont("Helvetica", 50);
 		textFont(font);
-		text("Congratulations!\nPress Move button to continue!", 50, 50);
+		text("Congratulations!\nPress X button to continue!", 50, 50);
 		if (moves.size() > 0 && moves.get(0).poll() > 0) {
-			if ((moves.get(0).get_buttons() & Button.Btn_MOVE.swigValue() )> 0) {
+			if ((moves.get(0).get_buttons() & Button.Btn_CROSS.swigValue() )> 0) {
 				endScreen = false;
 				restartHarder();
 			}
 		}
 	}
-	
+
 	private void drawGame() {
 		DumbFusionParameters tmpPar = null;
 		background(20,20,20);
@@ -242,12 +266,13 @@ public class PSMoveSketch extends PApplet{
 						tmpRumble = (int) (Math.abs(Math.round(255 * (1- angleDiff / (Math.PI)))));
 					}
 					//System.out.println(tmpPar != null ? ((Math.abs(tmpPar.accel[tmpPar.samples][0]) + Math.abs(tmpPar.accel[tmpPar.samples][1])) + "\t" + Math.abs(tmpPar.accel[tmpPar.samples][2])): "");
-					System.out.println(tmpRumble);
+					//System.out.println(tmpRumble);
 					if (tmpPar != null
 							&& Math.abs(tmpPar.accel[tmpPar.samples][0]) + Math.abs(tmpPar.accel[tmpPar.samples][1]) > 2
 							&& Math.abs(tmpPar.accel[tmpPar.samples][2]) > 1.4
 							&& tmpRumble > 220) {
 						r.hit();
+						score += 100 * numberOfRings;
 						activeRing--;
 						moves.get(0).set_rumble(0);
 					} else {
@@ -285,6 +310,19 @@ public class PSMoveSketch extends PApplet{
 				endScreen = true;
 			}
 		}
+		textFont(helv);
+		text(score, 15, 30);
+
+		int passedTime = (int) (System.currentTimeMillis() - startTime) / 1000;
+		float foo = passedTime / (float) gameTimeSec;
+		if (foo < 1) {
+			if (moves.size() > 0) {
+				moves.get(0).set_leds((int)(255 * foo), (int) (255 * (1-foo)), 0);
+			}
+		} else {
+			endScreen = false;
+			gameOver = true;
+		}
 
 		//		if (moves.size() > 0) {
 		//			int trigger = moves.get(0).get_trigger();
@@ -303,9 +341,9 @@ public class PSMoveSketch extends PApplet{
 		//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, currentAngle, (float) (currentAngle+ (Math.PI * 2)));
 		//		}
 
-		
+
 	}
-	
+
 	private void restartHarder() {
 		if (numberOfRings < 8) {
 			numberOfRings++;
@@ -315,6 +353,19 @@ public class PSMoveSketch extends PApplet{
 			}
 			activeRing = numberOfRings -1;
 		}
+	}
+
+	private void restartNew() {
+		numberOfRings = 3;
+		rings = new ArrayList<RingInfo>();
+		for (int i = 0; i < numberOfRings; i++) {
+			rings.add(new RingInfo(((this.height / 2) - 100)/numberOfRings, (float) (Math.random() * 2f * Math.PI)));
+		}
+		activeRing = numberOfRings -1;
+		score = 0;
+		startTime = System.currentTimeMillis();
+		gameOver = false;
+		endScreen = false;
 	}
 
 	private int calcVibration(int input) {
@@ -398,19 +449,19 @@ public class PSMoveSketch extends PApplet{
 		if (move.poll() > 0) {
 			int buttons = move.get_buttons(); 
 
-			
+
 			pushMatrix();
 			translate(this.width/2, this.height/2);
-			
+
 			int width = radius *2;
 			float circleWidth = width - width /5f;
 			float circleCoord = sin((float) Math.PI / 4f) * circleWidth/2f;
 			circleCoord -= circleCoord / 5f;
 			ellipse(0, 0, circleWidth, circleWidth);
-			
+
 			if ((buttons & Button.Btn_CIRCLE.swigValue()) > 0) {
 				ellipse(0, 0, circleWidth - circleWidth / 2.5f, circleWidth - circleWidth / 2.5f);
-				
+
 			} else if ((buttons & Button.Btn_TRIANGLE.swigValue()) > 0) {
 				float tmpX = cos((float) Math.PI / 6f) * circleWidth/-2f;
 				tmpX -= tmpX / 5f;
@@ -419,18 +470,18 @@ public class PSMoveSketch extends PApplet{
 				line(0, (circleWidth/2f) - (circleWidth/10f), tmpX, tmpY);
 				line(tmpX, tmpY, -1*tmpX, tmpY);
 				line(-1*tmpX, tmpY, 0, (circleWidth/2f) - (circleWidth/10f));
-				
+
 			} else if ((buttons & Button.Btn_CROSS.swigValue()) > 0) {
 				line(-1 * circleCoord, -1*circleCoord, circleCoord, circleCoord);
 				line(-1 * circleCoord, circleCoord, circleCoord, -1*circleCoord);
-				
+
 			} else if ((buttons & Button.Btn_SQUARE.swigValue()) > 0) {
 				rect(-1 * circleCoord, -1 * circleCoord, 2*circleCoord, 2*circleCoord);
-				
+
 			} 
 			popMatrix();
 		}
-		*/
+		 */
 	}
 
 	private void dumbFusion(DumbFusionParameters param, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
