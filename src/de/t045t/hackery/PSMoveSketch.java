@@ -4,20 +4,25 @@ import processing.core.*;
 import io.thp.psmove.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map.Entry;
 
 public class PSMoveSketch extends PApplet{
 
 	private ArrayList<PSMove> moves;
-	private ArrayList<MahoneyParameters> paramList;
 	private ArrayList<DumbFusionParameters> dParamList;
 	private ArrayList<float[]> angleList;
+	private ArrayList<ButtonLocation> testButtonPairs;
+	private ArrayList<RingInfo> rings;
+	
+	private float currentAngle;
 
 	public void setup() {
 		// Initialize MAGIC WANDS
 
+		currentAngle = 0;
 		angleList = new ArrayList<float[]>();
 		moves = new ArrayList<PSMove>();
-		paramList = new ArrayList<MahoneyParameters>();
 		dParamList = new ArrayList<DumbFusionParameters>();
 		for (int i = 0; i < psmoveapi.psmove_count_connected(); i++) {
 			moves.add(new PSMove(i));
@@ -29,7 +34,6 @@ public class PSMoveSketch extends PApplet{
 			} else {
 				System.out.println("Unknown");
 			}
-			paramList.add(new MahoneyParameters());
 			dParamList.add(new DumbFusionParameters(moves.get(i), 2));
 			angleList.add(new float[3]);
 			angleList.add(new float[3]);
@@ -45,116 +49,85 @@ public class PSMoveSketch extends PApplet{
 		fill(0.4f);
 		angleList.add(new float[3]);
 		Arrays.fill(angleList.get(0), 0);
-	}
 
-	private float currentAngle;
-
-	public void integrate_angles(float[] angles, float roll, float nick, float gear) {
-		angles[0] += (roll/9f)*(1/60f);
-		angles[1] += (nick/9f)*(1/60f);
-		angles[2] += (gear/9f)*(1/60f);
+		testButtonPairs = new ArrayList<ButtonLocation>();
+		testButtonPairs.add(new ButtonLocation(0, 0));
+		testButtonPairs.add(new ButtonLocation((float) (Math.PI /2f), 1));
+		testButtonPairs.add(new ButtonLocation((float) (Math.PI), 2));
+		testButtonPairs.add(new ButtonLocation((float) (3* Math.PI /2f), 3));
 		
-		//if(abs(roll) < 10 && abs(nick) < 10 && abs(gear) < 10) { // keine Bewegung
-			
+		rings = new ArrayList<RingInfo>();
+		rings.add(new RingInfo(90, testButtonPairs, (float) Math.PI / 30));
+		rings.add(new RingInfo(70, (float) (Math.random() * 2f * Math.PI)));
+		rings.add(new RingInfo(70, (float) (Math.random() * 2f * Math.PI)));
 	}
-	public void absolute_angles(float[] angles, float ax, float ay, float az) {
-		angles[0] = atan2(ay,az);
-		angles[1] = atan2(az,ax);
-		angles[2] = atan2(ax,ay);
-	}
-	
+
+	boolean btnPressed;
+	float startAngle;
 	public void draw() {
+		DumbFusionParameters tmpPar = null;
 		background(125,125,125);
 		stroke(255,0,0);
 		for (int i = 0; i < moves.size(); i++) {
 			PSMove move = moves.get(i);
 			if (move.poll() > 0) {
-				integrate_angles(angleList.get(i), move.getGx(), move.getGy(), move.getGz());
-				absolute_angles(angleList.get(i+1), move.getAx(), move.getAy(), move.getAz());
-				
-				//System.out.println(angleList.get(i)[0] + "\t" + angleList.get(i)[1] + "\t" + angleList.get(i)[2]);
 
-				/*
-				drawSegment(400, 300, 50, 5, 30, angleList.get(i+1)[0], angleList.get(i+1)[0] + 0.65f);
-				drawSegment(400, 300, 75, 5, 55, angleList.get(i+1)[1], angleList.get(i+1)[1] + 0.65f);
-				drawSegment(400, 300, 100, 5, 80, angleList.get(i+1)[2], angleList.get(i+1)[2] + 0.65f);
-				*/
-				
-				drawSegment(400, 300, 125, 5, 105, (int) angleList.get(i)[0] % 360, (int) (angleList.get(i)[0] % 360) + 40);
-				drawSegment(400, 300, 150, 5, 130, (int) angleList.get(i)[1] % 360, (int) (angleList.get(i)[1] % 360) + 40);
-				drawSegment(400, 300, 175, 5, 155, (int) angleList.get(i)[2] % 360, (int) (angleList.get(i)[2] % 360) + 40);
-				
-				
-				
-				// getAccelAngles(move.getAx(), move.getAy(), move.getAz());
-				MahonyAHRSupdateIMU(paramList.get(i), 
-						(float) (move.getGx() * Math.PI / 2000.0f), (float) (move.getGy() * Math.PI / 2000.0f), (float) (move.getGz() * Math.PI / 2000.0f), 
-						move.getAx() / 4200f, move.getAy() / 4200f, move.getAz() / 4200f);//,
-						//move.getMx(), move.getMy(), move.getMz());
 
-//				dumbFusion(dParamList.get(i), 
-//						(float) (move.getGx() * Math.PI / 2000.0f), (float) (move.getGy() * Math.PI / 2000.0f), (float) (move.getGz() * Math.PI / 2000.0f), 
-//						move.getAx() / 4200f, move.getAy() / 4200f, move.getAz() / 4200f,
-//						move.getMx() / 225f, move.getMy() / 225f, move.getMz() / 225f
-//						);
 				dumbFusion(dParamList.get(i), 
 						(float) (move.getGx() * Math.PI / 2000.0f), (float) (move.getGy() * Math.PI / 2000.0f), (float) (move.getGz() * Math.PI / 2000.0f), 
 						move.getAx() / 4200f, move.getAy() / 4200f, move.getAz() / 4200f,
 						move.getMx() / 225f, move.getMy() / 225f, move.getMz() / 225f
 						);
-				
-				DumbFusionParameters tmpPar = dParamList.get(0);
-				
+
+				tmpPar = dParamList.get(0);
+
+				if ((move.get_buttons() & Button.Btn_MOVE.swigValue()) > 0) {
+					if (!btnPressed) {
+						startAngle = tmpPar.alpha;
+						btnPressed = true;
+					}
+				} else {
+					if (btnPressed) {
+						currentAngle = currentAngle - (tmpPar.alpha - startAngle);
+						btnPressed = false;
+					}
+				}
+				/*
 				drawSegment(400, 300, 50, 5, 30, tmpPar.alpha, tmpPar.alpha + 0.65f);
 				drawSegment(400, 300, 75, 5, 55, tmpPar.beta, tmpPar.beta + 0.65f);
 				drawSegment(400, 300, 100, 5, 80, tmpPar.gamma, tmpPar.gamma + 0.65f);
-				System.out.println(tmpPar.alpha);
-				
-				
+				 */
 			}
-
-			/*
-			float[] tmpQ = paramList.get(0).q;
-			double heading, attitude, bank;
-			{
-				double test = tmpQ[1]*tmpQ[2] + tmpQ[3]*tmpQ[0];
-				if (test > 0.499) { // singularity at north pole
-					heading = 2 * atan2(tmpQ[1],tmpQ[0]);
-					attitude = Math.PI/2;
-					bank = 0;
-					return;
-				}
-				if (test < -0.499) { // singularity at south pole
-					heading = -2 * atan2(tmpQ[1],tmpQ[0]);
-					attitude = - Math.PI/2;
-					bank = 0;
-					return;
-				}
-			    double sqx = tmpQ[1]*tmpQ[1];
-			    double sqy = tmpQ[2]*tmpQ[2];
-			    double sqz = tmpQ[3]*tmpQ[3];
-			    heading = atan2(2*tmpQ[2]*tmpQ[0]-2*tmpQ[1]*tmpQ[3] , (float) (1 - 2*sqy - 2*sqz));
-				attitude = asin((float) (2*test));
-				bank = atan2(2*tmpQ[1]*tmpQ[0]-2*tmpQ[2]*tmpQ[3] , (float) (1 - 2*sqx - 2*sqz));
+		}
+		
+		int lastWidth = 20;
+		for (int i = 0; i < rings.size(); i++) {
+			RingInfo r = rings.get(i);
+			if (r.hasQTE()) {
+				drawCenteredQTERing(lastWidth, r.getWidth(), r.getAngle(), r.getButtonPos(), 0, 255, 0);
+			} else {
+				drawCenteredRing(lastWidth, r.getWidth(), r.getAngle(), 255,0, 0);
 			}
-			*/
-			DumbFusionParameters tmpPar = dParamList.get(0);
-			
-//			rect(100, 300, 100, (int) (200 * tmpPar.alpha));//tmpQ[0]));
-//			rect(200, 300, 100, (int) (200 * tmpPar.beta));//tmpQ[1]));
-//			rect(300, 300, 100, (int) (200 * tmpPar.gamma));//tmpQ[2]));
-			//rect(400, 300, 100, (int) (200 * tmpQ[3]));
-
+			lastWidth += r.getWidth();
 		}
-		updateRadialDial(mouseX, mouseY);
-		if (moves.size() > 0) {
 
-			int trigger = moves.get(0).get_trigger();
-			currentAngle = (float) (trigger / 255.0) * TWO_PI;
-		} else {
-			currentAngle = (float) (mouseX / 800.0) * TWO_PI;
-		}
-		drawSegment(400, 300, 220, 5/*(int) (currentAngle / (PI / 36))*/, 280, currentAngle, currentAngle+0.5f);
+		//		if (moves.size() > 0) {
+		//			int trigger = moves.get(0).get_trigger();
+		//			currentAngle = (float) (trigger / 255.0) * TWO_PI;
+		//		} else {
+		//			currentAngle = (float) (mouseX / 800.0) * TWO_PI;
+		//		}
+		
+//		if (btnPressed && tmpPar != null) {
+//			float tmpAngle = currentAngle - (tmpPar.alpha - startAngle);
+//			System.out.println(tmpAngle);
+//			drawCenteredQTERing(100, 50, tmpAngle, testButtonPairs, 255, 0, 0);
+//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, tmpAngle, (float) (tmpAngle + (Math.PI * 2)));
+//		} else {
+//			drawCenteredQTERing(100, 50, currentAngle, testButtonPairs, 255, 0, 0);
+//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, currentAngle, (float) (currentAngle+ (Math.PI * 2)));
+//		}
+
 	}
 
 	void updateRadialDial(int x, int y) {
@@ -174,31 +147,74 @@ public class PSMoveSketch extends PApplet{
 		}
 		endShape(CLOSE);
 	}
-	
+
+	private void drawCenteredRing(int innerRadius, int width, float rotation, int r, int g, int b) {
+		stroke(r, g, b);
+		drawSegment(this.width / 2, this.height / 2, innerRadius + width, 50, innerRadius, rotation, (float) (rotation+ (Math.PI * 2)));
+	}
+
+	private void drawCenteredQTERing(int innerRadius, int width, float rotation, ArrayList<ButtonLocation> buttonPositions, int r, int g, int b) {
+		drawCenteredRing(innerRadius, width, rotation, r, g, b);
+		for (ButtonLocation e : buttonPositions) {
+			pushMatrix();
+			translate(this.width / 2, this.height / 2);
+			float foo = rotation + e.getAngle();
+			rotate(rotation + e.getAngle());
+			translate(0, innerRadius + (width / 2));
+			ellipseMode(CENTER);
+			float circleWidth = width - width /5f;
+			float circleCoord = sin((float) Math.PI / 4f) * circleWidth/2f;
+			circleCoord -= circleCoord / 5f;
+			ellipse(0, 0, circleWidth, circleWidth);
+			switch(e.getType()) {
+			case 0: // CROSS
+				line(-1 * circleCoord, -1*circleCoord, circleCoord, circleCoord);
+				line(-1 * circleCoord, circleCoord, circleCoord, -1*circleCoord);
+				break;
+			case 1: // CIRCLE
+				ellipse(0, 0, circleWidth - circleWidth / 2.5f, circleWidth - circleWidth / 2.5f);
+				break;
+			case 2: // SQUARE
+				rect(-1 * circleCoord, -1 * circleCoord, 2*circleCoord, 2*circleCoord);
+				break;
+			case 3: // TRIANGLE
+				float tmpX = cos((float) Math.PI / 6f) * circleWidth/-2f;
+				tmpX -= tmpX / 5f;
+				float tmpY = sin((float) Math.PI / 6f) * circleWidth/-2f;
+				tmpY -= tmpY / 5f;
+				line(0, (circleWidth/2f) - (circleWidth/10f), tmpX, tmpY);
+				line(tmpX, tmpY, -1*tmpX, tmpY);
+				line(-1*tmpX, tmpY, 0, (circleWidth/2f) - (circleWidth/10f));
+				break;
+			}
+			popMatrix();
+		}
+	}
+
 	private void dumbFusion(DumbFusionParameters param, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
 		param.gyro[param.currentSample][0] = gx;
 		param.gyro[param.currentSample][1] = gy;
 		param.gyro[param.currentSample][2] = gz;
-		
+
 		param.accel[param.currentSample][0] = ax;
 		param.accel[param.currentSample][1] = ay;
 		param.accel[param.currentSample][2] = az;
-		
+
 		param.mag[param.currentSample][0] = mx;
 		param.mag[param.currentSample][1] = my;
 		param.mag[param.currentSample][2] = mz;
-		
+
 		param.currentSample = ((param.currentSample == param.samples - 1) ? 0 : param.currentSample + 1);
-		
+
 		for (int i = 0; i < param.samples; i++) {
 			param.gyro[param.samples][0] += param.gyro[i][0];
 			param.gyro[param.samples][1] += param.gyro[i][1];
 			param.gyro[param.samples][2] += param.gyro[i][2];
-			
+
 			param.accel[param.samples][0] += param.accel[i][0];
 			param.accel[param.samples][1] += param.accel[i][1];
 			param.accel[param.samples][2] += param.accel[i][2];
-			
+
 			param.mag[param.samples][0] += param.mag[i][0];
 			param.mag[param.samples][1] += param.mag[i][1];
 			param.mag[param.samples][2] += param.mag[i][2];
@@ -206,26 +222,26 @@ public class PSMoveSketch extends PApplet{
 		param.gyro[param.samples][0] /= (float) param.samples;
 		param.gyro[param.samples][1] /= (float) param.samples;
 		param.gyro[param.samples][2] /= (float) param.samples;
-		
+
 		param.accel[param.samples][0] /= (float) param.samples;
 		param.accel[param.samples][1] /= (float) param.samples;
 		param.accel[param.samples][2] /= (float) param.samples;
-		
+
 		param.mag[param.samples][0] /= (float) param.samples;
 		param.mag[param.samples][1] /= (float) param.samples;
 		param.mag[param.samples][2] /= (float) param.samples;
 
 		param.alpha = (atan2(param.accel[param.samples][0], param.accel[param.samples][1]));
-				//+ atan2(param.mag[param.samples][0], param.mag[param.samples][1])) / 2f;
+		//+ atan2(param.mag[param.samples][0], param.mag[param.samples][1])) / 2f;
 		param.beta = (atan2(param.accel[param.samples][0], param.accel[param.samples][2]));
-				//+ atan2(param.mag[param.samples][0], param.mag[param.samples][2])) / 2f;
+		//+ atan2(param.mag[param.samples][0], param.mag[param.samples][2])) / 2f;
 		//System.out.println((atan2(param.accel[param.samples][1], param.accel[param.samples][2]) *180f /Math.PI) 
 		//		+ "\t" + (atan2(param.mag[param.samples][1], param.mag[param.samples][2]) * 180f /Math.PI));
 		param.gamma = (atan2(param.accel[param.samples][1], param.accel[param.samples][2]));
-				//+ atan2(param.mag[param.samples][1], param.mag[param.samples][2])) / 2f;
+		//+ atan2(param.mag[param.samples][1], param.mag[param.samples][2])) / 2f;
 	}
-	
-	
+
+
 	private void Mahoney(MahoneyParameters params, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
 
 		float recipNorm;
@@ -262,7 +278,7 @@ public class PSMoveSketch extends PApplet{
 			gx *= recipNorm;
 			gy *= recipNorm;
 			gz *= recipNorm;
-			*/
+			 */
 
 			//System.out.println(gx + "\t" + gy + "\t" + gz + "\t" + ax + "\t" + ay + "\t" + az + "\t" + mx + "\t" + my + "\t" + mz + "\t");
 
@@ -360,7 +376,7 @@ public class PSMoveSketch extends PApplet{
 			gx *= recipNorm;
 			gy *= recipNorm;
 			gz *= recipNorm;
-			*/
+			 */
 
 			// Estimated direction of gravity and vector perpendicular to magnetic flux
 			halfvx = params.q[1] * params.q[3] - params.q[0] * params.q[2];
@@ -411,10 +427,6 @@ public class PSMoveSketch extends PApplet{
 		params.q[1] *= recipNorm;
 		params.q[2] *= recipNorm;
 		params.q[3] *= recipNorm;
-	}
-	
-	private void calibrateMove(PSMove move) {
-		
 	}
 
 	private float invSqrt(float x) {
