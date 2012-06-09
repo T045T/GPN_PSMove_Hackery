@@ -14,13 +14,22 @@ public class PSMoveSketch extends PApplet{
 	private ArrayList<float[]> angleList;
 	private ArrayList<ButtonLocation> testButtonPairs;
 	private ArrayList<RingInfo> rings;
+	private int segments = 30;
+	private int numberOfRings;
+	private boolean endScreen;
 	
-	private float currentAngle;
+	private int score;
+
+
+	int lastSeenButton;
+
 
 	public void setup() {
 		// Initialize MAGIC WANDS
 
-		currentAngle = 0;
+		endScreen = false;
+		numberOfRings = 3;
+		lastSeenButton = -1;
 		angleList = new ArrayList<float[]>();
 		moves = new ArrayList<PSMove>();
 		dParamList = new ArrayList<DumbFusionParameters>();
@@ -34,7 +43,7 @@ public class PSMoveSketch extends PApplet{
 			} else {
 				System.out.println("Unknown");
 			}
-			dParamList.add(new DumbFusionParameters(moves.get(i), 2));
+			dParamList.add(new DumbFusionParameters(moves.get(i), 3));
 			angleList.add(new float[3]);
 			angleList.add(new float[3]);
 			Arrays.fill(angleList.get(2*i), 0);
@@ -55,16 +64,42 @@ public class PSMoveSketch extends PApplet{
 		testButtonPairs.add(new ButtonLocation((float) (Math.PI /2f), 1));
 		testButtonPairs.add(new ButtonLocation((float) (Math.PI), 2));
 		testButtonPairs.add(new ButtonLocation((float) (3* Math.PI /2f), 3));
-		
+
 		rings = new ArrayList<RingInfo>();
-		rings.add(new RingInfo(90, testButtonPairs, (float) Math.PI / 30));
-		rings.add(new RingInfo(70, (float) (Math.random() * 2f * Math.PI)));
-		rings.add(new RingInfo(70, (float) (Math.random() * 2f * Math.PI)));
+		//rings.add(new RingInfo(90, testButtonPairs, (float) Math.PI / 60));
+		rings.add(new RingInfo(((this.height / 2) - 100)/numberOfRings, (float) (Math.random() * 2f * Math.PI)));
+		rings.add(new RingInfo(((this.height / 2) - 100)/numberOfRings, (float) (Math.random() * 2f * Math.PI)));
+		rings.add(new RingInfo(((this.height / 2) - 100)/numberOfRings, (float) (Math.random() * 2f * Math.PI)));
+		//rings.add(new RingInfo(90, testButtonPairs, (float) Math.PI / 150));
+		activeRing = rings.size()-1;
 	}
 
+	int activeRing;
 	boolean btnPressed;
 	float startAngle;
+
 	public void draw() {
+		if (!endScreen) {
+			drawGame();
+		} else {
+			drawEndScreen();
+		}
+	}
+	
+	private void drawEndScreen() {
+		background(125,125,125);
+		PFont font = createFont("Helvetica", 50);
+		textFont(font);
+		text("Congratulations!\nPress Move button to continue!", 50, 50);
+		if (moves.size() > 0 && moves.get(0).poll() > 0) {
+			if ((moves.get(0).get_buttons() & Button.Btn_MOVE.swigValue() )> 0) {
+				endScreen = false;
+				restartHarder();
+			}
+		}
+	}
+	
+	private void drawGame() {
 		DumbFusionParameters tmpPar = null;
 		background(125,125,125);
 		stroke(255,0,0);
@@ -88,7 +123,7 @@ public class PSMoveSketch extends PApplet{
 					}
 				} else {
 					if (btnPressed) {
-						currentAngle = currentAngle - (tmpPar.alpha - startAngle);
+						rings.get(activeRing).setAngle(rings.get(activeRing).getAngle() - (tmpPar.alpha - startAngle));
 						btnPressed = false;
 					}
 				}
@@ -99,16 +134,157 @@ public class PSMoveSketch extends PApplet{
 				 */
 			}
 		}
-		
-		int lastWidth = 20;
+
+		int lastWidth = 50;
+		drawCenterIcon(lastWidth);
 		for (int i = 0; i < rings.size(); i++) {
 			RingInfo r = rings.get(i);
-			if (r.hasQTE()) {
-				drawCenteredQTERing(lastWidth, r.getWidth(), r.getAngle(), r.getButtonPos(), 0, 255, 0);
+			int increment = 0;
+			if (i == activeRing) {
+				if (r.hasQTE()) {
+					drawCenteredQTERing(lastWidth, r.getWidth(), r.getAngle(), r.getButtonPos(), 125, 125, 0);
+					increment = r.getWidth();
+					pushMatrix();
+					translate(this.width/2, this.height/2);
+					fill(255f,0f,0f,0.6f);
+					rect(-10, -1*(lastWidth + r.getWidth() +2), 20, r.getWidth() +4);
+					popMatrix();
+					r.setAngle(r.getAngle() + r.getRotSpeed());
+
+					// hit detection
+					float angleDiff;
+					if (moves.get(0).poll() > 0) {
+						int button = moves.get(0).get_buttons();
+						int j = 0;
+						double correctedAngle = r.getAngle() - Math.PI;
+						if (correctedAngle < 0) correctedAngle += 2*Math.PI;
+
+						if (r.getLastSeen() != -1 
+								&& r.getButtonPos().get(r.getLastSeen()).getAngle() < correctedAngle + (r.getRotSpeed() * this.frameRate / 5) 
+								&& r.getButtonPos().get(r.getLastSeen()).getState() == 0) {
+							r.getButtonPos().get(r.getLastSeen()).missed();
+						}
+
+						for (int k = 0; k < r.getButtonPos().size(); k++) {
+							ButtonLocation l = r.getButtonPos().get(k);
+							if (Math.abs(l.getAngle() - correctedAngle) < (r.getRotSpeed() * this.frameRate / 5)) {
+								r.setLastSeen(k);
+							}
+						}
+						//						while (j < r.getButtonPos().size() && correctedAngle > (r.getButtonPos().get(j).getAngle() + (r.getRotSpeed() * this.frameRate / 10))) {
+						//							if (r.getButtonPos().get(j).getState() == 0) {
+						//								if ((j > 0 && r.getButtonPos().get(j-1).getState() != 0) || j == 0)
+						//								r.getButtonPos().get(j).missed();
+						//							}
+						//							j++;
+						//						}
+
+						for (ButtonLocation l : r.getButtonPos()) {
+							if (l.getState() == 0) {
+								angleDiff = Math.abs(l.getAngle() - (float) correctedAngle);
+								if (angleDiff < r.getRotSpeed() * this.frameRate / 5) {
+									switch(l.getType()) {
+									case 0: //CROSS
+										if ((button & Button.Btn_CROSS.swigValue()) > 0) {
+											l.hit();
+										}
+										break;
+									case 1: //CIRCLE
+										if ((button & Button.Btn_CIRCLE.swigValue()) > 0) {
+											l.hit();
+										}
+										break;
+									case 2: //SQUARE
+										if ((button & Button.Btn_SQUARE.swigValue()) > 0) {
+											l.hit();
+										}
+										break;
+									case 3: //TRIANGLE
+										System.out.println(button);
+										if ((button & Button.Btn_TRIANGLE.swigValue()) > 0) {
+											l.hit();
+										}
+										break;
+									}
+									if (l.getState() == 0 && button > 0) {
+										l.missed();
+									}
+								}
+							}
+						}
+					}
+				} else {
+					int tmpRumble;
+					float angleDiff;
+					if (btnPressed && tmpPar != null) {
+						drawCenteredRing(lastWidth, r.getWidth(), r.getAngle() - (tmpPar.alpha - startAngle), 255, 0, 0);
+						increment = r.getWidth();
+						float currentActiveAngle = r.getAngle() - (tmpPar.alpha - startAngle);
+						currentActiveAngle %= (Math.PI * 2);
+
+						if ( currentActiveAngle < r.getSweetSpot()) {
+							angleDiff = (float) ((r.getSweetSpot() - currentActiveAngle) % (Math.PI * 2));
+
+						} else {
+							angleDiff = (float) ((currentActiveAngle - r.getSweetSpot()) % (Math.PI * 2));
+						}
+						if (angleDiff > Math.PI) angleDiff = (float) ((Math.PI * 2) - angleDiff);
+						tmpRumble = (int) (Math.abs(Math.round(255 * (1- angleDiff / (Math.PI)))));
+						//System.out.println(angleDiff + "\t" + currentActiveAngle + "\t" + r.getSweetSpot() + "\t" + tmpRumble);
+					}else {
+						drawCenteredRing(lastWidth, r.getWidth(), r.getAngle(), 255,0, 0);
+						increment = r.getWidth();
+						if (r.getAngle()% (Math.PI * 2) < r.getSweetSpot()) {
+							angleDiff = (float) ((r.getSweetSpot() - r.getAngle()) % (Math.PI * 2));
+						} else {
+							angleDiff = (float) ((r.getAngle() - r.getSweetSpot()) % (Math.PI * 2));
+						}
+						if (angleDiff > Math.PI) angleDiff = (float) ((Math.PI * 2) - angleDiff);
+						tmpRumble = (int) (Math.abs(Math.round(255 * (1- angleDiff / (Math.PI)))));
+					}
+					//System.out.println(tmpPar != null ? ((Math.abs(tmpPar.accel[tmpPar.samples][0]) + Math.abs(tmpPar.accel[tmpPar.samples][1])) + "\t" + Math.abs(tmpPar.accel[tmpPar.samples][2])): "");
+					System.out.println(tmpRumble);
+					if (tmpPar != null
+							&& Math.abs(tmpPar.accel[tmpPar.samples][0]) + Math.abs(tmpPar.accel[tmpPar.samples][1]) > 2
+							&& Math.abs(tmpPar.accel[tmpPar.samples][2]) > 1.4
+							&& tmpRumble > 220) {
+						r.hit();
+						activeRing--;
+						moves.get(0).set_rumble(0);
+					} else {
+						moves.get(0).set_rumble(calcVibration(tmpRumble));
+					}
+					moves.get(0).update_leds();
+				}
 			} else {
-				drawCenteredRing(lastWidth, r.getWidth(), r.getAngle(), 255,0, 0);
+				if (r.hasQTE()) {
+					if (r.isHit()) {
+						drawCenteredQTERing(lastWidth, 2*r.getWidth()/3, r.getAngle(), r.getButtonPos(), 0, 0, 255);
+						increment = 2*r.getWidth()/3;
+					} else {
+						drawCenteredQTERing(lastWidth, r.getWidth(), r.getAngle(), r.getButtonPos(), 125, 125, 0);
+						increment = r.getWidth();
+					}
+
+				} else {
+					if (r.isHit()) {
+						drawCenteredRing(lastWidth, 2*r.getWidth() /3, r.getAngle(), 0, 0, 255);
+						increment = 2*r.getWidth()/3;
+					} else {
+						drawCenteredRing(lastWidth, r.getWidth(), r.getAngle(), 255,0, 0);
+						increment = r.getWidth();
+					}
+				}
 			}
-			lastWidth += r.getWidth();
+			if (activeRing < 0) activeRing = 0;
+			lastWidth += increment+5;
+			boolean win = true;
+			for(RingInfo t : rings) {
+				win &= t.allHit();
+			}
+			if (win) {
+				endScreen = true;
+			}
 		}
 
 		//		if (moves.size() > 0) {
@@ -117,20 +293,37 @@ public class PSMoveSketch extends PApplet{
 		//		} else {
 		//			currentAngle = (float) (mouseX / 800.0) * TWO_PI;
 		//		}
-		
-//		if (btnPressed && tmpPar != null) {
-//			float tmpAngle = currentAngle - (tmpPar.alpha - startAngle);
-//			System.out.println(tmpAngle);
-//			drawCenteredQTERing(100, 50, tmpAngle, testButtonPairs, 255, 0, 0);
-//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, tmpAngle, (float) (tmpAngle + (Math.PI * 2)));
-//		} else {
-//			drawCenteredQTERing(100, 50, currentAngle, testButtonPairs, 255, 0, 0);
-//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, currentAngle, (float) (currentAngle+ (Math.PI * 2)));
-//		}
 
+		//		if (btnPressed && tmpPar != null) {
+		//			float tmpAngle = currentAngle - (tmpPar.alpha - startAngle);
+		//			System.out.println(tmpAngle);
+		//			drawCenteredQTERing(100, 50, tmpAngle, testButtonPairs, 255, 0, 0);
+		//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, tmpAngle, (float) (tmpAngle + (Math.PI * 2)));
+		//		} else {
+		//			drawCenteredQTERing(100, 50, currentAngle, testButtonPairs, 255, 0, 0);
+		//			//drawSegment(400, 300, 220, 50/*(int) (currentAngle / (PI / 36))*/, 280, currentAngle, (float) (currentAngle+ (Math.PI * 2)));
+		//		}
+
+		
+	}
+	
+	private void restartHarder() {
+		if (numberOfRings < 8) {
+			numberOfRings++;
+			rings = new ArrayList<RingInfo>();
+			for (int i = 0; i < numberOfRings; i++) {
+				rings.add(new RingInfo(((this.height / 2) - 100)/numberOfRings, (float) (Math.random() * 2f * Math.PI)));
+			}
+			activeRing = numberOfRings -1;
+		}
 	}
 
-	void updateRadialDial(int x, int y) {
+	private int calcVibration(int input) {
+		double tmp = (double) input;
+		return (int) Math.round(255-Math.sqrt(1-(tmp/255)*(tmp/255))*255);
+	}
+
+	private void updateRadialDial(int x, int y) {
 
 	}
 
@@ -150,7 +343,7 @@ public class PSMoveSketch extends PApplet{
 
 	private void drawCenteredRing(int innerRadius, int width, float rotation, int r, int g, int b) {
 		stroke(r, g, b);
-		drawSegment(this.width / 2, this.height / 2, innerRadius + width, 50, innerRadius, rotation, (float) (rotation+ (Math.PI * 2)));
+		drawSegment(this.width / 2, this.height / 2, innerRadius + width, segments, innerRadius, rotation, (float) (rotation+ (Math.PI * 2)));
 	}
 
 	private void drawCenteredQTERing(int innerRadius, int width, float rotation, ArrayList<ButtonLocation> buttonPositions, int r, int g, int b) {
@@ -158,10 +351,17 @@ public class PSMoveSketch extends PApplet{
 		for (ButtonLocation e : buttonPositions) {
 			pushMatrix();
 			translate(this.width / 2, this.height / 2);
-			float foo = rotation + e.getAngle();
-			rotate(rotation + e.getAngle());
+			float foo = rotation - e.getAngle();
+			rotate(rotation - e.getAngle());
 			translate(0, innerRadius + (width / 2));
 			ellipseMode(CENTER);
+			if (e.getState() == 1) {
+				stroke(0,255,0);
+			} else if (e.getState() == 2) {
+				stroke(255,0,0);
+			} else {
+				stroke(r,g,b);
+			}
 			float circleWidth = width - width /5f;
 			float circleCoord = sin((float) Math.PI / 4f) * circleWidth/2f;
 			circleCoord -= circleCoord / 5f;
@@ -189,6 +389,49 @@ public class PSMoveSketch extends PApplet{
 			}
 			popMatrix();
 		}
+	}
+
+	private void drawCenterIcon(int radius) {
+		/*
+		PSMove move = null;
+		if (moves.size() > 0) move = moves.get(0);
+		if (moves == null) return;
+		if (move.poll() > 0) {
+			int buttons = move.get_buttons(); 
+
+			
+			pushMatrix();
+			translate(this.width/2, this.height/2);
+			
+			int width = radius *2;
+			float circleWidth = width - width /5f;
+			float circleCoord = sin((float) Math.PI / 4f) * circleWidth/2f;
+			circleCoord -= circleCoord / 5f;
+			ellipse(0, 0, circleWidth, circleWidth);
+			
+			if ((buttons & Button.Btn_CIRCLE.swigValue()) > 0) {
+				ellipse(0, 0, circleWidth - circleWidth / 2.5f, circleWidth - circleWidth / 2.5f);
+				
+			} else if ((buttons & Button.Btn_TRIANGLE.swigValue()) > 0) {
+				float tmpX = cos((float) Math.PI / 6f) * circleWidth/-2f;
+				tmpX -= tmpX / 5f;
+				float tmpY = sin((float) Math.PI / 6f) * circleWidth/-2f;
+				tmpY -= tmpY / 5f;
+				line(0, (circleWidth/2f) - (circleWidth/10f), tmpX, tmpY);
+				line(tmpX, tmpY, -1*tmpX, tmpY);
+				line(-1*tmpX, tmpY, 0, (circleWidth/2f) - (circleWidth/10f));
+				
+			} else if ((buttons & Button.Btn_CROSS.swigValue()) > 0) {
+				line(-1 * circleCoord, -1*circleCoord, circleCoord, circleCoord);
+				line(-1 * circleCoord, circleCoord, circleCoord, -1*circleCoord);
+				
+			} else if ((buttons & Button.Btn_SQUARE.swigValue()) > 0) {
+				rect(-1 * circleCoord, -1 * circleCoord, 2*circleCoord, 2*circleCoord);
+				
+			} 
+			popMatrix();
+		}
+		*/
 	}
 
 	private void dumbFusion(DumbFusionParameters param, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
