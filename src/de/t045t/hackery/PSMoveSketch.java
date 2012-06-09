@@ -9,15 +9,32 @@ public class PSMoveSketch extends PApplet{
 
 	private ArrayList<PSMove> moves;
 	private ArrayList<MahoneyParameters> paramList;
-	private float [] angles;
+	private ArrayList<DumbFusionParameters> dParamList;
+	private ArrayList<float[]> angleList;
 
 	public void setup() {
 		// Initialize MAGIC WANDS
+
+		angleList = new ArrayList<float[]>();
 		moves = new ArrayList<PSMove>();
 		paramList = new ArrayList<MahoneyParameters>();
+		dParamList = new ArrayList<DumbFusionParameters>();
 		for (int i = 0; i < psmoveapi.psmove_count_connected(); i++) {
 			moves.add(new PSMove(i));
+			int foo = moves.get(i).getConnection_type();
+			if (foo == ConnectionType.Conn_Bluetooth.ordinal()) {
+				System.out.println("Bluetooth");
+			} else if (foo == ConnectionType.Conn_USB.ordinal()) {
+				System.out.println("USB");
+			} else {
+				System.out.println("Unknown");
+			}
 			paramList.add(new MahoneyParameters());
+			dParamList.add(new DumbFusionParameters(moves.get(i), 2));
+			angleList.add(new float[3]);
+			angleList.add(new float[3]);
+			Arrays.fill(angleList.get(2*i), 0);
+			Arrays.fill(angleList.get(2*i+1), 0);
 		}
 
 		// Set up Processing canvas
@@ -26,13 +43,13 @@ public class PSMoveSketch extends PApplet{
 		noStroke();
 		colorMode(RGB, 1);
 		fill(0.4f);
-		angles = new float[3];
-		Arrays.fill(angles, 0);
+		angleList.add(new float[3]);
+		Arrays.fill(angleList.get(0), 0);
 	}
 
 	private float currentAngle;
 
-	public void integrate_angles(float roll, float nick, float gear) {
+	public void integrate_angles(float[] angles, float roll, float nick, float gear) {
 		angles[0] += (roll/9f)*(1/60f);
 		angles[1] += (nick/9f)*(1/60f);
 		angles[2] += (gear/9f)*(1/60f);
@@ -40,9 +57,9 @@ public class PSMoveSketch extends PApplet{
 		//if(abs(roll) < 10 && abs(nick) < 10 && abs(gear) < 10) { // keine Bewegung
 			
 	}
-	public void absolute_angles(float ax, float ay, float az) {
+	public void absolute_angles(float[] angles, float ax, float ay, float az) {
 		angles[0] = atan2(ay,az);
-		angles[1] = atan2(ax,az);
+		angles[1] = atan2(az,ax);
 		angles[2] = atan2(ax,ay);
 	}
 	
@@ -52,20 +69,52 @@ public class PSMoveSketch extends PApplet{
 		for (int i = 0; i < moves.size(); i++) {
 			PSMove move = moves.get(i);
 			if (move.poll() > 0) {
-				//integrate_angles(move.getGx(), move.getGy(), move.getGz());
-				integrate_angles(move.getAx(), move.getAy(), move.getAz());
+				integrate_angles(angleList.get(i), move.getGx(), move.getGy(), move.getGz());
+				absolute_angles(angleList.get(i+1), move.getAx(), move.getAy(), move.getAz());
+				
+				//System.out.println(angleList.get(i)[0] + "\t" + angleList.get(i)[1] + "\t" + angleList.get(i)[2]);
 
-				drawSegment(400, 300, 50, 5, 30, (int) angles[0] % 360, (int) (angles[0] % 360) + 40);
-				drawSegment(400, 300, 75, 5, 55, (int) angles[1] % 360, (int) (angles[1] % 360) + 40);
-				drawSegment(400, 300, 100, 5, 80, (int) angles[2] % 360, (int) (angles[2] % 360) + 40);
+				/*
+				drawSegment(400, 300, 50, 5, 30, angleList.get(i+1)[0], angleList.get(i+1)[0] + 0.65f);
+				drawSegment(400, 300, 75, 5, 55, angleList.get(i+1)[1], angleList.get(i+1)[1] + 0.65f);
+				drawSegment(400, 300, 100, 5, 80, angleList.get(i+1)[2], angleList.get(i+1)[2] + 0.65f);
+				*/
+				
+				drawSegment(400, 300, 125, 5, 105, (int) angleList.get(i)[0] % 360, (int) (angleList.get(i)[0] % 360) + 40);
+				drawSegment(400, 300, 150, 5, 130, (int) angleList.get(i)[1] % 360, (int) (angleList.get(i)[1] % 360) + 40);
+				drawSegment(400, 300, 175, 5, 155, (int) angleList.get(i)[2] % 360, (int) (angleList.get(i)[2] % 360) + 40);
+				
+				
+				
 				// getAccelAngles(move.getAx(), move.getAy(), move.getAz());
-//				MahonyAHRSupdateIMU(paramList.get(i), 
-//						move.getGx(), move.getGy(), move.getGz(), 
-//						move.getAx(), move.getAy(), move.getAz());//,
-					//	move.getMx(), move.getMy(), move.getMz());
+				MahonyAHRSupdateIMU(paramList.get(i), 
+						(float) (move.getGx() * Math.PI / 2000.0f), (float) (move.getGy() * Math.PI / 2000.0f), (float) (move.getGz() * Math.PI / 2000.0f), 
+						move.getAx() / 4200f, move.getAy() / 4200f, move.getAz() / 4200f);//,
+						//move.getMx(), move.getMy(), move.getMz());
+
+//				dumbFusion(dParamList.get(i), 
+//						(float) (move.getGx() * Math.PI / 2000.0f), (float) (move.getGy() * Math.PI / 2000.0f), (float) (move.getGz() * Math.PI / 2000.0f), 
+//						move.getAx() / 4200f, move.getAy() / 4200f, move.getAz() / 4200f,
+//						move.getMx() / 225f, move.getMy() / 225f, move.getMz() / 225f
+//						);
+				dumbFusion(dParamList.get(i), 
+						(float) (move.getGx() * Math.PI / 2000.0f), (float) (move.getGy() * Math.PI / 2000.0f), (float) (move.getGz() * Math.PI / 2000.0f), 
+						move.getAx() / 4200f, move.getAy() / 4200f, move.getAz() / 4200f,
+						move.getMx() / 225f, move.getMy() / 225f, move.getMz() / 225f
+						);
+				
+				DumbFusionParameters tmpPar = dParamList.get(0);
+				
+				drawSegment(400, 300, 50, 5, 30, tmpPar.alpha, tmpPar.alpha + 0.65f);
+				drawSegment(400, 300, 75, 5, 55, tmpPar.beta, tmpPar.beta + 0.65f);
+				drawSegment(400, 300, 100, 5, 80, tmpPar.gamma, tmpPar.gamma + 0.65f);
+				System.out.println(tmpPar.alpha);
+				
+				
 			}
 
-			float[] tmpQ = paramList.get(i).q;
+			/*
+			float[] tmpQ = paramList.get(0).q;
 			double heading, attitude, bank;
 			{
 				double test = tmpQ[1]*tmpQ[2] + tmpQ[3]*tmpQ[0];
@@ -88,10 +137,13 @@ public class PSMoveSketch extends PApplet{
 				attitude = asin((float) (2*test));
 				bank = atan2(2*tmpQ[1]*tmpQ[0]-2*tmpQ[2]*tmpQ[3] , (float) (1 - 2*sqx - 2*sqz));
 			}
-			rect(100, 300, 100, (int) (200 * tmpQ[0]));
-			rect(200, 300, 100, (int) (200 * tmpQ[1]));
-			rect(300, 300, 100, (int) (200 * tmpQ[2]));
-			rect(400, 300, 100, (int) (200 * tmpQ[3]));
+			*/
+			DumbFusionParameters tmpPar = dParamList.get(0);
+			
+//			rect(100, 300, 100, (int) (200 * tmpPar.alpha));//tmpQ[0]));
+//			rect(200, 300, 100, (int) (200 * tmpPar.beta));//tmpQ[1]));
+//			rect(300, 300, 100, (int) (200 * tmpPar.gamma));//tmpQ[2]));
+			//rect(400, 300, 100, (int) (200 * tmpQ[3]));
 
 		}
 		updateRadialDial(mouseX, mouseY);
@@ -102,7 +154,7 @@ public class PSMoveSketch extends PApplet{
 		} else {
 			currentAngle = (float) (mouseX / 800.0) * TWO_PI;
 		}
-		drawSegment(400, 300, 200, 5/*(int) (currentAngle / (PI / 36))*/, 150, currentAngle, currentAngle+0.5f);
+		drawSegment(400, 300, 220, 5/*(int) (currentAngle / (PI / 36))*/, 280, currentAngle, currentAngle+0.5f);
 	}
 
 	void updateRadialDial(int x, int y) {
@@ -122,21 +174,57 @@ public class PSMoveSketch extends PApplet{
 		}
 		endShape(CLOSE);
 	}
-
-	private void getAccelAngles(float ax, float ay, float az) {
-		float[] ret = new float[4];
-		float recipNorm;
+	
+	private void dumbFusion(DumbFusionParameters param, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
+		param.gyro[param.currentSample][0] = gx;
+		param.gyro[param.currentSample][1] = gy;
+		param.gyro[param.currentSample][2] = gz;
 		
-		// Normalise gyroscope measurement
-		recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-		ax *= recipNorm;
-		ay *= recipNorm;
-		az *= recipNorm;
+		param.accel[param.currentSample][0] = ax;
+		param.accel[param.currentSample][1] = ay;
+		param.accel[param.currentSample][2] = az;
+		
+		param.mag[param.currentSample][0] = mx;
+		param.mag[param.currentSample][1] = my;
+		param.mag[param.currentSample][2] = mz;
+		
+		param.currentSample = ((param.currentSample == param.samples - 1) ? 0 : param.currentSample + 1);
+		
+		for (int i = 0; i < param.samples; i++) {
+			param.gyro[param.samples][0] += param.gyro[i][0];
+			param.gyro[param.samples][1] += param.gyro[i][1];
+			param.gyro[param.samples][2] += param.gyro[i][2];
+			
+			param.accel[param.samples][0] += param.accel[i][0];
+			param.accel[param.samples][1] += param.accel[i][1];
+			param.accel[param.samples][2] += param.accel[i][2];
+			
+			param.mag[param.samples][0] += param.mag[i][0];
+			param.mag[param.samples][1] += param.mag[i][1];
+			param.mag[param.samples][2] += param.mag[i][2];
+		}
+		param.gyro[param.samples][0] /= (float) param.samples;
+		param.gyro[param.samples][1] /= (float) param.samples;
+		param.gyro[param.samples][2] /= (float) param.samples;
+		
+		param.accel[param.samples][0] /= (float) param.samples;
+		param.accel[param.samples][1] /= (float) param.samples;
+		param.accel[param.samples][2] /= (float) param.samples;
+		
+		param.mag[param.samples][0] /= (float) param.samples;
+		param.mag[param.samples][1] /= (float) param.samples;
+		param.mag[param.samples][2] /= (float) param.samples;
 
-		rect(500, 300, 100, (int) (200 * ax));
-		rect(600, 300, 100, (int) (200 * ay));
-		rect(700, 300, 100, (int) (200 * az));
+		param.alpha = (atan2(param.accel[param.samples][0], param.accel[param.samples][1]));
+				//+ atan2(param.mag[param.samples][0], param.mag[param.samples][1])) / 2f;
+		param.beta = (atan2(param.accel[param.samples][0], param.accel[param.samples][2]));
+				//+ atan2(param.mag[param.samples][0], param.mag[param.samples][2])) / 2f;
+		//System.out.println((atan2(param.accel[param.samples][1], param.accel[param.samples][2]) *180f /Math.PI) 
+		//		+ "\t" + (atan2(param.mag[param.samples][1], param.mag[param.samples][2]) * 180f /Math.PI));
+		param.gamma = (atan2(param.accel[param.samples][1], param.accel[param.samples][2]));
+				//+ atan2(param.mag[param.samples][1], param.mag[param.samples][2])) / 2f;
 	}
+	
 	
 	private void Mahoney(MahoneyParameters params, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
 
@@ -176,7 +264,7 @@ public class PSMoveSketch extends PApplet{
 			gz *= recipNorm;
 			*/
 
-			System.out.println(gx + "\t" + gy + "\t" + gz + "\t" + ax + "\t" + ay + "\t" + az + "\t" + mx + "\t" + my + "\t" + mz + "\t");
+			//System.out.println(gx + "\t" + gy + "\t" + gz + "\t" + ax + "\t" + ay + "\t" + az + "\t" + mx + "\t" + my + "\t" + mz + "\t");
 
 
 			// Auxiliary variables to avoid repeated arithmetic
@@ -323,6 +411,10 @@ public class PSMoveSketch extends PApplet{
 		params.q[1] *= recipNorm;
 		params.q[2] *= recipNorm;
 		params.q[3] *= recipNorm;
+	}
+	
+	private void calibrateMove(PSMove move) {
+		
 	}
 
 	private float invSqrt(float x) {
